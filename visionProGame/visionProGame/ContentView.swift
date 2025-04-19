@@ -1,78 +1,154 @@
-//
-//  ContentView.swift
-//  visionProGame
-//
-//  Created by Srihari Prazid on 4/13/25.
-//
-
 import SwiftUI
 
-/// A SwiftUI view that simulates a reaction time game.
-/// In a real Vision Pro application, you would replace `.onHover` with the actual eye-tracking API callbacks.
 struct ReactionGameView: View {
-    // Position of the target on screen.
+    // MARK: – Screen toggles
+    @State private var showStartScreen = true
+
+    // MARK: – Game state
     @State private var targetPosition: CGPoint = .zero
-    // Reaction time measured in seconds.
+    @State private var lastPosition: CGPoint = .zero
+    @State private var deltaX: CGFloat = 0
+    @State private var deltaY: CGFloat = 0
     @State private var reactionTime: TimeInterval = 0
-    // Timestamp when the target appeared.
+    @State private var totalReactionTime: TimeInterval = 0
     @State private var targetAppearedTime: Date?
+    @State private var attemptCount: Int = 0
+
+    private let maxAttempts = 5
+    private var averageReactionTime: TimeInterval {
+        guard attemptCount > 0 else { return 0 }
+        return totalReactionTime / Double(attemptCount)
+    }
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background color.
                 Color.black.ignoresSafeArea()
-                
-                // The target: a red circle.
-                Circle()
-                    .fill(Color.red)
-                    .frame(width: 50, height: 50)
-                    .position(targetPosition)
-                    .onAppear {
-                        // Start the game by spawning the first target.
-                        spawnTarget(in: geometry.size)
+
+                if showStartScreen {
+                    // ───── Start Screen ───────────────────────────────────────────
+                    VStack(spacing: 20) {
+                        Text("Reaction Time Game")
+                            .font(.largeTitle)
+                            .foregroundColor(.white)
+
+                        Text("""
+                            When the red circle appears, gaze at it and pinch to tap as quickly as you can. \
+                            You will get \(maxAttempts) attempts. After each tap, your reaction time and how \
+                            far the dot moved (Δx, Δy) will be shown.
+                            """)
+                            .font(.body)
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                            .padding()
+
+                        Button("Start Game") {
+                            // reset everything
+                            attemptCount = 0
+                            reactionTime = 0
+                            totalReactionTime = 0
+                            deltaX = 0
+                            deltaY = 0
+                            lastPosition = .zero
+                            showStartScreen = false
+                        }
+                        .font(.title2)
+                        .padding(.horizontal, 40)
+                        .padding(.vertical, 12)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
                     }
-                    // Here, .onHover acts as a stand-in for detecting when the user's gaze lands on the target.
-                    .onHover { isHovering in
-                        // When the "gaze" is on the target and we have a recorded appearance time...
-                        if isHovering, let appearTime = targetAppearedTime {
-                            // Calculate the reaction time.
-                            reactionTime = Date().timeIntervalSince(appearTime)
-                            print("Reaction time: \(reactionTime) seconds")
-                            
-                            // For visual feedback, the reaction time is displayed at the top.
-                            // Spawn a new target after a short delay.
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                                reactionTime = 0
-                                spawnTarget(in: geometry.size)
+                    .frame(width: geometry.size.width * 0.8)
+                    .position(x: geometry.size.width / 2,
+                              y: geometry.size.height / 2)
+
+                } else if attemptCount < maxAttempts {
+                    // ───── Gameplay ───────────────────────────────────────────────
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 50, height: 50)
+                        .position(targetPosition)
+                        .onAppear {
+                            spawnTarget(in: geometry.size)
+                        }
+                        .focusable(true)
+                        .onTapGesture {
+                            guard let appear = targetAppearedTime else { return }
+                            // measure reaction
+                            reactionTime = Date().timeIntervalSince(appear)
+                            totalReactionTime += reactionTime
+                            attemptCount += 1
+
+                            // schedule next round or end
+                            if attemptCount < maxAttempts {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                    reactionTime = 0
+                                    spawnTarget(in: geometry.size)
+                                }
                             }
                         }
+
+                    // Overlay: stats during play
+                    VStack(spacing: 6) {
+                        if reactionTime > 0 {
+                            Text("Reaction: \(reactionTime, specifier: "%.2f") s")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                        }
+                        Text("Δx: \(deltaX, specifier: "%.0f"), Δy: \(deltaY, specifier: "%.0f")")
+                            .font(.body)
+                            .foregroundColor(.yellow)
                     }
-                
-                // Display the reaction time on-screen.
-                if reactionTime > 0 {
-                    Text("Reaction: \(reactionTime, specifier: "%.2f") s")
-                        .font(.title)
+                    .position(x: geometry.size.width / 2, y: 50)
+
+                } else {
+                    // ───── End Screen ─────────────────────────────────────────────
+                    VStack(spacing: 20) {
+                        Text("Game Over!")
+                            .font(.largeTitle)
+                            .foregroundColor(.green)
+
+                        Text("Your average reaction time:")
+                            .font(.title2)
+                            .foregroundColor(.white)
+
+                        Text("\(averageReactionTime, specifier: "%.2f") s")
+                            .font(.system(size: 48, weight: .bold))
+                            .foregroundColor(.white)
+
+                        Button("Play Again") {
+                            // go back to start
+                            showStartScreen = true
+                        }
+                        .font(.title2)
+                        .padding(.horizontal, 40)
+                        .padding(.vertical, 12)
+                        .background(Color.blue)
                         .foregroundColor(.white)
-                        .position(x: geometry.size.width / 2, y: 50)
+                        .cornerRadius(10)
+                    }
+                    .frame(width: geometry.size.width * 0.8)
+                    .position(x: geometry.size.width / 2,
+                              y: geometry.size.height / 2)
                 }
             }
         }
     }
-    
-    /// Spawns the target at a random location within the given size.
+
     private func spawnTarget(in size: CGSize) {
-        let padding: CGFloat = 50
-        let randomX = CGFloat.random(in: padding...(size.width - padding))
-        let randomY = CGFloat.random(in: padding...(size.height - padding))
-        targetPosition = CGPoint(x: randomX, y: randomY)
+        guard attemptCount < maxAttempts else { return }
+
+        let pad: CGFloat = 50
+        lastPosition = targetPosition
+
+        let newX = CGFloat.random(in: pad...(size.width - pad))
+        let newY = CGFloat.random(in: pad...(size.height - pad))
+        targetPosition = CGPoint(x: newX, y: newY)
+
+        deltaX = newX - lastPosition.x
+        deltaY = newY - lastPosition.y
+
         targetAppearedTime = Date()
     }
 }
-
-struct ReactionGameView_Previews: PreviewProvider {
-    static var previews: some View {
-        ReactionGameView()
-    }
-}
-
