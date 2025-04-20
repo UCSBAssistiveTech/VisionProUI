@@ -152,3 +152,9 @@ struct ReactionGameView: View {
         targetAppearedTime = Date()
     }
 }
+
+struct ReactionGameView_Previews: PreviewProvider {
+    static var previews: some View {
+        ReactionGameView()
+    }
+}
