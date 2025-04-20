@@ -13,6 +13,9 @@ struct ReactionGameView: View {
     @State private var totalReactionTime: TimeInterval = 0
     @State private var targetAppearedTime: Date?
     @State private var attemptCount: Int = 0
+    @State private var showFixationTest = false
+    @State private var fixationPhase = 0 // 0=center wait, 1=slow move, 2=fast move
+    @State private var redDotX: CGFloat = 0.0
 
     private let maxAttempts = 5
     private var averageReactionTime: TimeInterval {
@@ -51,6 +54,7 @@ struct ReactionGameView: View {
                             deltaY = 0
                             lastPosition = .zero
                             showStartScreen = false
+                            showFixationTest = true
                         }
                         .font(.title2)
                         .padding(.horizontal, 40)
@@ -62,6 +66,29 @@ struct ReactionGameView: View {
                     .frame(width: geometry.size.width * 0.8)
                     .position(x: geometry.size.width / 2,
                               y: geometry.size.height / 2)
+
+                } else if showFixationTest {
+                    // ───── Fixation Test ─────────────────────────────────────────
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 50, height: 50)
+                        .position(x: redDotX, y: geometry.size.height / 2)
+                        .onAppear {
+                            redDotX = geometry.size.width / 2
+
+                            // Phase 0: Wait 13 seconds
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 13) {
+                                fixationPhase = 1
+                                animateFixationDot(width: geometry.size.width, duration: 5) {
+                                    fixationPhase = 2
+                                    animateFixationDot(width: geometry.size.width, duration: 5) {
+                                        // Done → Start reaction game
+                                        showFixationTest = false
+                                        spawnTarget(in: geometry.size)
+                                    }
+                                }
+                            }
+                        }
 
                 } else if attemptCount < maxAttempts {
                     // ───── Gameplay ───────────────────────────────────────────────
@@ -131,6 +158,35 @@ struct ReactionGameView: View {
                     .frame(width: geometry.size.width * 0.8)
                     .position(x: geometry.size.width / 2,
                               y: geometry.size.height / 2)
+                }
+            }
+        }
+    }
+
+    // MARK: - Fixation Dot Animation
+    private func animateFixationDot(width: CGFloat, duration: TimeInterval, completion: @escaping () -> Void) {
+        let gap: CGFloat = 20
+        let left = gap
+        let right = width - gap
+        let center = width / 2
+        let segment = duration / 3
+
+        withAnimation(.easeInOut(duration: segment)) {
+            redDotX = right
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
+            withAnimation(.easeInOut(duration: segment)) {
+                redDotX = left
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
+                withAnimation(.easeInOut(duration: segment)) {
+                    redDotX = center
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
+                    completion()
                 }
             }
         }
