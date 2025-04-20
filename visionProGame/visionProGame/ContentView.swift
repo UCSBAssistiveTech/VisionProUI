@@ -78,20 +78,19 @@ struct ReactionGameView: View {
                          .onAppear {
                              redDotX = geometry.size.width / 2
  
-                             // Phase 0: Wait 13 seconds
-                             DispatchQueue.main.asyncAfter(deadline: .now() + 13) {
-                                 fixationPhase = 1
-                                 animateFixationDot(width: geometry.size.width, duration: 5) {
-                                     fixationPhase = 2
-                                     animateFixationDot(width: geometry.size.width, duration: 5) {
-                                         // Done → Start reaction game
-                                         showFixationTest = false
-                                         spawnTarget(in: geometry.size)
-                                     }
-                                 }
-                             }
-                         }
- 
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        fixationPhase = 1
+                        animateFixationDot(width: geometry.size.width, duration: 13) { // First movement: 13 seconds
+                            fixationPhase = 2
+                            animateFixationDot(width: geometry.size.width, duration: 5) { // Second movement: 5 seconds
+                                // Done → Start reaction game
+                                showFixationTest = false
+                                spawnTarget(in: geometry.size)
+                            }
+                        }
+                    }
+                }
+                        
                  } else if attemptCount < maxAttempts {
                     // ───── Gameplay ─────────────────────────────────────────
                     // Red dot fixed at center
