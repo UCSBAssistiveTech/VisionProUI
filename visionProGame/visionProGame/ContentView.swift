@@ -3,9 +3,8 @@ import SwiftUI
 struct ReactionGameView: View {
     // MARK: – Screen toggles
     @State private var showStartScreen = true
-    @State private var showFixationTest = false
-    @State private var showOptokineticTest = false
     @State private var showReflexDotGame = false
+    @State private var showOptokineticTest = false
 
     // MARK: – Game state
     @State private var targetPosition: CGPoint = .zero
@@ -16,7 +15,7 @@ struct ReactionGameView: View {
     @State private var totalReactionTime: TimeInterval = 0
     @State private var targetAppearedTime: Date?
     @State private var attemptCount: Int = 0
-    @State private var redDotX: CGFloat = 0.0
+
     private let maxAttempts = 5
     private let blueDotSize: CGFloat = 100
     private let redDotSize: CGFloat = 20
@@ -39,8 +38,7 @@ struct ReactionGameView: View {
 
                         Text("""
                         When the blue circle appears, gaze at it and pinch to tap as quickly as you can. \
-                        You will get \(maxAttempts) attempts. After each tap, your reaction time and how \
-                        far the dot moved (Δx, Δy) will be shown.
+                        You will get \(maxAttempts) attempts. After that, you’ll be tested on your reflexes.
                         """)
                         .font(.body)
                         .foregroundColor(.white)
@@ -55,7 +53,7 @@ struct ReactionGameView: View {
                             deltaY = 0
                             lastPosition = .zero
                             showStartScreen = false
-                            showFixationTest = true
+                            spawnTarget(in: geometry.size)
                         }
                         .font(.title2)
                         .padding(.horizontal, 40)
@@ -67,22 +65,6 @@ struct ReactionGameView: View {
                     .frame(width: geometry.size.width * 0.8)
                     .position(x: geometry.size.width / 2,
                               y: geometry.size.height / 2)
-
-                } else if showFixationTest {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 50, height: 50)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                                animateFixationDot(width: geometry.size.width, duration: 13) {
-                                    animateFixationDot(width: geometry.size.width, duration: 5) {
-                                        showFixationTest = false
-                                        spawnTarget(in: geometry.size)
-                                    }
-                                }
-                            }
-                        }
 
                 } else if attemptCount < maxAttempts && !showOptokineticTest {
                     Circle()
@@ -111,7 +93,7 @@ struct ReactionGameView: View {
                                     spawnTarget(in: geometry.size)
                                 }
                             } else {
-                                showOptokineticTest = true
+                                showReflexDotGame = true
                             }
                         }
 
@@ -126,10 +108,6 @@ struct ReactionGameView: View {
                             .foregroundColor(.yellow)
                     }
                     .position(x: geometry.size.width / 2, y: 50)
-
-                } else if showOptokineticTest {
-                    OptokineticTestView(isShowing: $showOptokineticTest, showReflexDotGame: $showReflexDotGame)
-                        .ignoresSafeArea()
 
                 } else if showReflexDotGame {
                     ReflexDotGameView(isShowing: $showReflexDotGame)
@@ -166,24 +144,6 @@ struct ReactionGameView: View {
         }
     }
 
-    private func animateFixationDot(width: CGFloat, duration: TimeInterval, completion: @escaping () -> Void) {
-        let gap: CGFloat = 20
-        let left = gap
-        let right = width - gap
-        let segment = duration / 3
-
-        withAnimation(.easeInOut(duration: segment)) {}
-        DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
-            withAnimation(.easeInOut(duration: segment)) {}
-            DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
-                withAnimation(.easeInOut(duration: segment)) {}
-                DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
-                    completion()
-                }
-            }
-        }
-    }
-
     private func spawnTarget(in size: CGSize) {
         guard attemptCount < maxAttempts else { return }
         lastPosition = targetPosition
@@ -207,80 +167,11 @@ struct ReactionGameView: View {
     }
 }
 
-struct OptokineticTestView: View {
-    @Binding var isShowing: Bool
-    @Binding var showReflexDotGame: Bool
-    @State private var phase: Int = 0
-    @State private var offset: CGFloat = 0
-    @State private var stripes: [CGFloat] = []
-
-    let redDotSize: CGFloat = 40
-
-    var body: some View {
-        ZStack {
-            Color.white.ignoresSafeArea()
-
-            if phase == 0 {
-                Text("Optokinetic")
-                    .font(.largeTitle)
-                    .foregroundColor(.black)
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            phase = 1
-                        }
-                    }
-            } else {
-                GeometryReader { geo in
-                    ZStack {
-                        HStack(spacing: 20) {
-                            ForEach(stripes.indices, id: \.self) { i in
-                                Rectangle()
-                                    .fill(Color(.darkGray))
-                                    .frame(width: stripes[i], height: geo.size.height)
-                            }
-                        }
-                        .offset(x: offset)
-                        .onAppear {
-                            let totalWidth = geo.size.width * 2
-                            stripes = generateStripes(totalWidth: totalWidth)
-                            offset = 0
-
-                            withAnimation(.linear(duration: 7)) {
-                                offset = -2 * geo.size.width
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 7) {
-                                isShowing = false
-                                showReflexDotGame = true
-                            }
-                        }
-
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: redDotSize, height: redDotSize)
-                            .position(x: geo.size.width / 2, y: geo.size.height / 2)
-                    }
-                }
-            }
-        }
-    }
-
-    private func generateStripes(totalWidth: CGFloat) -> [CGFloat] {
-        var arr: [CGFloat] = []
-        var sum: CGFloat = 0
-        while sum < totalWidth {
-            let w = CGFloat.random(in: 20...80)
-            arr.append(w)
-            sum += w + 20
-        }
-        return arr
-    }
-}
-
 struct ReflexDotGameView: View {
     @Binding var isShowing: Bool
 
-    private let totalCircles = 12
-    private let highlightDuration = 0.4
+    private let totalCircles = 9
+    private let highlightDuration = 0.7
     private let maxCycles = 3
 
     @State private var highlightedIndex = 0
@@ -300,12 +191,12 @@ struct ReflexDotGameView: View {
                 .font(.headline)
                 .foregroundColor(.yellow)
 
-            HStack(spacing: 15) {
+            HStack(spacing: 20) {
                 ForEach(0..<totalCircles, id: \.self) { i in
                     Circle()
                         .fill(i == highlightedIndex ? .red : .gray)
-                        .frame(width: 30, height: 30)
-                        .scaleEffect(i == highlightedIndex ? 1.2 : 0.7)
+                        .frame(width: 60, height: 60)
+                        .scaleEffect(i == highlightedIndex ? 1.2 : 0.8)
                         .animation(.easeInOut(duration: 0.2), value: highlightedIndex)
                         .onTapGesture {
                             if i == highlightedIndex {
@@ -341,7 +232,10 @@ struct ReflexDotGameView: View {
 
     private func startHighlighting() {
         Timer.scheduledTimer(withTimeInterval: highlightDuration, repeats: true) { timer in
-            if !isRunning { timer.invalidate(); return }
+            if !isRunning {
+                timer.invalidate()
+                return
+            }
 
             if forward {
                 highlightedIndex += 1
