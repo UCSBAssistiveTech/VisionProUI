@@ -14,6 +14,9 @@ struct ReactionGameView: View {
     @State private var lastPosition: CGPoint   = .zero
     @State private var deltaX: CGFloat         = 0
     @State private var deltaY: CGFloat         = 0
+    @State private var totalDeltaX: CGFloat = 0
+    @State private var totalDeltaY: CGFloat = 0
+    @State private var finalHitPercentage: Double = 0
     @State private var reactionTime: TimeInterval = 0
     @State private var totalReactionTime: TimeInterval = 0
     @State private var targetAppearedTime: Date?
@@ -27,6 +30,17 @@ struct ReactionGameView: View {
         guard attemptCount > 0 else { return 0 }
         return totalReactionTime / Double(attemptCount)
     }
+
+    private var averageDeltaX: CGFloat {
+        guard attemptCount > 0 else { return 0 }
+        return totalDeltaX / CGFloat(attemptCount)
+    }
+
+    private var averageDeltaY: CGFloat {
+        guard attemptCount > 0 else { return 0 }
+        return totalDeltaY / CGFloat(attemptCount)
+    }
+
 
     var body: some View {
         GeometryReader { geo in
@@ -56,6 +70,9 @@ struct ReactionGameView: View {
                             totalReactionTime = 0
                             deltaX            = 0
                             deltaY            = 0
+                            totalDeltaX       = 0    
+                            totalDeltaY       = 0     
+                            finalHitPercentage = 0    
                             lastPosition      = .zero
                             showStartScreen   = false
                             spawnTarget(in: geo.size)
@@ -122,9 +139,13 @@ struct ReactionGameView: View {
 
                 // ─── 3) Reflex‑Dot Game ───────────────────────────────────
                 } else if showReflexDotGame {
-                    ReflexDotGameView(isShowing: $showReflexDotGame)
+                    ReflexDotGameView(
+                        isShowing: $showReflexDotGame,
+                        hitPercentageHandler: { percentage in 
+                            finalHitPercentage = percentage   
+                        }
+                    )
                     .onDisappear {
-                         // Reflex‑Dot just finished → launch Optokinetic
                         showOptokineticTest = true
                     }
 
@@ -146,6 +167,18 @@ struct ReactionGameView: View {
                         Text("\(averageReactionTime, specifier: "%.2f") s")
                             .font(.system(size: 48, weight: .bold))
                             .foregroundColor(.white)
+
+                        Text("Average Δx: \(averageDeltaX, specifier: "%.0f")")
+                            .font(.title2)
+                            .foregroundColor(.yellow)
+
+                        Text("Average Δy: \(averageDeltaY, specifier: "%.0f")")
+                            .font(.title2)
+                            .foregroundColor(.yellow)
+
+                        Text("Dot Hit Accuracy: \(finalHitPercentage, specifier: "%.0f")%")
+                            .font(.title2)
+                            .foregroundColor(.blue)
 
                         Button("Play Again") {
                             showStartScreen = true
@@ -179,8 +212,11 @@ struct ReactionGameView: View {
         } while hypot(x - center.x, y - center.y) < minDist
 
         targetPosition     = CGPoint(x: x, y: y)
-        deltaX             = x - lastPosition.x
-        deltaY             = y - lastPosition.y
+        deltaX = x - lastPosition.x
+        deltaY = y - lastPosition.y
+        totalDeltaX += abs(deltaX)
+        totalDeltaY += abs(deltaY)
+
         targetAppearedTime = Date()
     }
 }
@@ -191,7 +227,8 @@ struct ReactionGameView: View {
 // ─────────────────────────────────────────────────────────────────────────────
 struct ReflexDotGameView: View {
     @Binding var isShowing: Bool
-
+    var hitPercentageHandler: (Double) -> Void
+    
     private let totalCircles = 5
     private let maxCycles     = 3
     private let speedUpFactor : Double = 0.95
@@ -234,6 +271,7 @@ struct ReflexDotGameView: View {
 
             if !isRunning {
                 Button("Finish") {
+                    hitPercentageHandler(hitPercentage) 
                     isShowing = false
                 }
                 .padding()
