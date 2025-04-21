@@ -1,12 +1,10 @@
 import SwiftUI
 
 struct ReactionGameView: View {
-    // MARK: – Screen toggles
     @State private var showStartScreen = true
     @State private var showReflexDotGame = false
     @State private var showOptokineticTest = false
 
-    // MARK: – Game state
     @State private var targetPosition: CGPoint = .zero
     @State private var lastPosition: CGPoint = .zero
     @State private var deltaX: CGFloat = 0
@@ -170,8 +168,8 @@ struct ReactionGameView: View {
 struct ReflexDotGameView: View {
     @Binding var isShowing: Bool
 
-    private let totalCircles = 9
-    private let highlightDuration = 0.7
+    private let totalCircles = 5
+    private let highlightDuration = 1.2  // slower speed
     private let maxCycles = 3
 
     @State private var highlightedIndex = 0
@@ -191,11 +189,11 @@ struct ReflexDotGameView: View {
                 .font(.headline)
                 .foregroundColor(.yellow)
 
-            HStack(spacing: 20) {
+            HStack(spacing: 30) {
                 ForEach(0..<totalCircles, id: \.self) { i in
                     Circle()
                         .fill(i == highlightedIndex ? .red : .gray)
-                        .frame(width: 60, height: 60)
+                        .frame(width: 100, height: 100)
                         .scaleEffect(i == highlightedIndex ? 1.2 : 0.8)
                         .animation(.easeInOut(duration: 0.2), value: highlightedIndex)
                         .onTapGesture {
