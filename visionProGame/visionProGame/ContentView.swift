@@ -15,7 +15,7 @@ struct ReactionGameView: View {
     @State private var totalReactionTime: TimeInterval = 0
     @State private var targetAppearedTime: Date?
     @State private var attemptCount: Int = 0
-
+    @State private var redDotX: CGFloat = 0.0
     private let maxAttempts = 5
     private let blueDotSize: CGFloat = 100
     private let redDotSize: CGFloat = 20
