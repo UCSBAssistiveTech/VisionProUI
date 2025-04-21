@@ -169,9 +169,11 @@ struct ReflexDotGameView: View {
     @Binding var isShowing: Bool
 
     private let totalCircles = 5
-    private let highlightDuration = 1.2  // slower speed
     private let maxCycles = 3
+    private let speedUpFactor: Double = 0.95
+    private let initialDelay: Double = 1.0
 
+    @State private var currentDelay: Double = 1.0
     @State private var highlightedIndex = 0
     @State private var forward = true
     @State private var hitCount = 0
@@ -218,6 +220,7 @@ struct ReflexDotGameView: View {
         }
         .padding()
         .onAppear {
+            currentDelay = initialDelay
             startHighlighting()
         }
         .background(Color.black.ignoresSafeArea())
@@ -229,9 +232,8 @@ struct ReflexDotGameView: View {
     }
 
     private func startHighlighting() {
-        Timer.scheduledTimer(withTimeInterval: highlightDuration, repeats: true) { timer in
+        Timer.scheduledTimer(withTimeInterval: currentDelay, repeats: false) { timer in
             if !isRunning {
-                timer.invalidate()
                 return
             }
 
@@ -251,7 +253,11 @@ struct ReflexDotGameView: View {
 
             if cycleCount >= maxCycles {
                 isRunning = false
+                return
             }
+
+            currentDelay *= speedUpFactor
+            startHighlighting()
         }
     }
 }
