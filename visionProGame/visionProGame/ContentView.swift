@@ -214,7 +214,7 @@ struct OptokineticTestView: View {
     @State private var offset: CGFloat = 0
     @State private var stripes: [CGFloat] = []
 
-    let redDotSize: CGFloat = 20
+    let redDotSize: CGFloat = 40
 
     var body: some View {
         ZStack {
