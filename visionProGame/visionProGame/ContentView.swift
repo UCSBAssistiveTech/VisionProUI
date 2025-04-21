@@ -3,6 +3,8 @@ import SwiftUI
 struct ReactionGameView: View {
     // MARK: – Screen toggles
     @State private var showStartScreen = true
+    @State private var showFixationTest = false
+    @State private var showOptokineticTest = false
 
     // MARK: – Game state
     @State private var targetPosition: CGPoint = .zero
@@ -13,13 +15,11 @@ struct ReactionGameView: View {
     @State private var totalReactionTime: TimeInterval = 0
     @State private var targetAppearedTime: Date?
     @State private var attemptCount: Int = 0
-    @State private var showFixationTest = false
-    @State private var fixationPhase = 0 // 0=center wait, 1=slow move, 2=fast move
-    @State private var redDotX: CGFloat = 0.0
 
     private let maxAttempts = 5
     private let blueDotSize: CGFloat = 100
     private let redDotSize: CGFloat = 20
+
     private var averageReactionTime: TimeInterval {
         guard attemptCount > 0 else { return 0 }
         return totalReactionTime / Double(attemptCount)
@@ -70,28 +70,24 @@ struct ReactionGameView: View {
                               y: geometry.size.height / 2)
 
                 } else if showFixationTest {
-                     // ───── Fixation Test ─────────────────────────────────────────
-                     Circle()
-                         .fill(Color.red)
-                         .frame(width: 50, height: 50)
-                         .position(x: redDotX, y: geometry.size.height / 2)
-                         .onAppear {
-                             redDotX = geometry.size.width / 2
- 
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        fixationPhase = 1
-                        animateFixationDot(width: geometry.size.width, duration: 13) { // First movement: 13 seconds
-                            fixationPhase = 2
-                            animateFixationDot(width: geometry.size.width, duration: 5) { // Second movement: 5 seconds
-                                // Done → Start reaction game
-                                showFixationTest = false
-                                spawnTarget(in: geometry.size)
+                    // ───── Fixation Test ─────────────────────────────────────────
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 50, height: 50)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                // two‐phase fixation dot
+                                animateFixationDot(width: geometry.size.width, duration: 13) {
+                                    animateFixationDot(width: geometry.size.width, duration: 5) {
+                                        showFixationTest = false
+                                        spawnTarget(in: geometry.size)
+                                    }
+                                }
                             }
                         }
-                    }
-                }
-                        
-                 } else if attemptCount < maxAttempts {
+
+                } else if attemptCount < maxAttempts && !showOptokineticTest {
                     // ───── Gameplay ─────────────────────────────────────────
                     // Red dot fixed at center
                     Circle()
@@ -116,12 +112,14 @@ struct ReactionGameView: View {
                             totalReactionTime += reactionTime
                             attemptCount += 1
 
-                            // next round or end
                             if attemptCount < maxAttempts {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                                     reactionTime = 0
                                     spawnTarget(in: geometry.size)
                                 }
+                            } else {
+                                // After last attempt, jump to optokinetic test
+                                showOptokineticTest = true
                             }
                         }
 
@@ -137,6 +135,11 @@ struct ReactionGameView: View {
                             .foregroundColor(.yellow)
                     }
                     .position(x: geometry.size.width / 2, y: 50)
+
+                } else if showOptokineticTest {
+                    // ───── Optokinetic Test ───────────────────────────────────
+                    OptokineticTestView(isShowing: $showOptokineticTest)
+                        .ignoresSafeArea()
 
                 } else {
                     // ───── End Screen ───────────────────────────────────────
@@ -170,39 +173,35 @@ struct ReactionGameView: View {
             }
         }
     }
-     // MARK: - Fixation Dot Animation
-     private func animateFixationDot(width: CGFloat, duration: TimeInterval, completion: @escaping () -> Void) {
-         let gap: CGFloat = 20
-         let left = gap
-         let right = width - gap
-         let center = width / 2
-         let segment = duration / 3
- 
-         withAnimation(.easeInOut(duration: segment)) {
-             redDotX = right
-         }
- 
-         DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
-             withAnimation(.easeInOut(duration: segment)) {
-                 redDotX = left
-             }
- 
-             DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
-                 withAnimation(.easeInOut(duration: segment)) {
-                     redDotX = center
-                 }
- 
-                 DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
-                     completion()
-                 }
-             }
-         }
-     }
+
+    // MARK: - Fixation Dot Animation
+    private func animateFixationDot(width: CGFloat, duration: TimeInterval, completion: @escaping () -> Void) {
+        let gap: CGFloat = 20
+        let left = gap
+        let right = width - gap
+        let segment = duration / 3
+
+        withAnimation(.easeInOut(duration: segment)) {
+            redDotX = right
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
+            withAnimation(.easeInOut(duration: segment)) {
+                redDotX = left
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
+                withAnimation(.easeInOut(duration: segment)) {
+                    redDotX = width / 2
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + segment) {
+                    completion()
+                }
+            }
+        }
+    }
 
     /// Spawns a blue target at a random position, avoiding the center red dot
     private func spawnTarget(in size: CGSize) {
         guard attemptCount < maxAttempts else { return }
-
         lastPosition = targetPosition
         let pad: CGFloat = 50
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -221,6 +220,81 @@ struct ReactionGameView: View {
         deltaX = newX - lastPosition.x
         deltaY = newY - lastPosition.y
         targetAppearedTime = Date()
+    }
+}
+
+struct OptokineticTestView: View {
+    @Binding var isShowing: Bool
+    @State private var phase: Int = 0
+    @State private var offset: CGFloat = 0
+    @State private var stripes: [CGFloat] = []
+
+    let redDotSize: CGFloat = 20
+
+    var body: some View {
+        ZStack {
+            Color.white.ignoresSafeArea()
+
+            if phase == 0 {
+                Text("Optokinetic")
+                    .font(.largeTitle)
+                    .foregroundColor(.black)
+                    .onAppear {
+                        // show the label for 2 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            phase = 1
+                        }
+                    }
+
+            } else {
+                GeometryReader { geo in
+                    ZStack {
+                        // Barcode pattern: grey strips on white base
+                        HStack(spacing: 20) {
+                            ForEach(stripes.indices, id: \.self) { i in
+                                Rectangle()
+                                    .fill(Color.gray)
+                                    .frame(width: stripes[i], height: geo.size.height)
+                            }
+                        }
+                        .offset(x: offset)
+                        .onAppear {
+                            // build enough stripes to scroll across twice the screen
+                            let totalWidth = geo.size.width * 2
+                            stripes = generateStripes(totalWidth: totalWidth)
+                            offset = 0
+
+                            // slide to the right over 7s
+                            withAnimation(.linear(duration: 7)) {
+                                offset = -geo.size.width
+                            }
+                            // when done, dismiss back to end screen
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 7) {
+                                isShowing = false
+                            }
+                        }
+
+                        // Red dot in the center
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: redDotSize, height: redDotSize)
+                            .position(x: geo.size.width / 2,
+                                      y: geo.size.height / 2)
+                    }
+                }
+            }
+        }
+    }
+
+    private func generateStripes(totalWidth: CGFloat) -> [CGFloat] {
+        var arr: [CGFloat] = []
+        var sum: CGFloat = 0
+        while sum < totalWidth {
+            let w = CGFloat.random(in: 20...80)
+            arr.append(w)
+            sum += w + 20  // include the HStack spacing
+        }
+        return arr
     }
 }
 
