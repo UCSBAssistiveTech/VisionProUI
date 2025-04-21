@@ -123,12 +123,10 @@ struct ReactionGameView: View {
                 // ─── 3) Reflex‑Dot Game ───────────────────────────────────
                 } else if showReflexDotGame {
                     ReflexDotGameView(isShowing: $showReflexDotGame)
-                        .onChange(of: showReflexDotGame) { stillShowing in
-                            // when user taps Finish, launch optokinetic
-                            if !stillShowing {
-                                showOptokineticTest = true
-                            }
-                        }
+                    .onDisappear {
+                         // Reflex‑Dot just finished → launch Optokinetic
+                        showOptokineticTest = true
+                    }
 
                 // ─── 4) Optokinetic Test ──────────────────────────────────
                 } else if showOptokineticTest {
