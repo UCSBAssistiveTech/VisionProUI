@@ -240,46 +240,42 @@ struct OptokineticTestView: View {
                     .font(.largeTitle)
                     .foregroundColor(.black)
                     .onAppear {
-                        // show the label for 2 seconds
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                             phase = 1
                         }
                     }
-
             } else {
                 GeometryReader { geo in
                     ZStack {
-                        // Barcode pattern: grey strips on white base
+                        // Barcode pattern: darker grey strips
                         HStack(spacing: 20) {
                             ForEach(stripes.indices, id: \.self) { i in
                                 Rectangle()
-                                    .fill(Color.gray)
+                                    .fill(Color(.darkGray))
                                     .frame(width: stripes[i], height: geo.size.height)
                             }
                         }
                         .offset(x: offset)
                         .onAppear {
-                            // build enough stripes to scroll across twice the screen
+                            // build enough stripes to scroll across twice the screen width
                             let totalWidth = geo.size.width * 2
                             stripes = generateStripes(totalWidth: totalWidth)
                             offset = 0
 
-                            // slide to the right over 7s
+                            // slide faster: cover two screen-widths in 7s
                             withAnimation(.linear(duration: 7)) {
-                                offset = -geo.size.width
+                                offset = -2 * geo.size.width
                             }
-                            // when done, dismiss back to end screen
                             DispatchQueue.main.asyncAfter(deadline: .now() + 7) {
                                 isShowing = false
                             }
                         }
 
-                        // Red dot in the center
+                        // Red dot centered
                         Circle()
                             .fill(Color.red)
                             .frame(width: redDotSize, height: redDotSize)
-                            .position(x: geo.size.width / 2,
-                                      y: geo.size.height / 2)
+                            .position(x: geo.size.width / 2, y: geo.size.height / 2)
                     }
                 }
             }
@@ -292,7 +288,7 @@ struct OptokineticTestView: View {
         while sum < totalWidth {
             let w = CGFloat.random(in: 20...80)
             arr.append(w)
-            sum += w + 20  // include the HStack spacing
+            sum += w + 20
         }
         return arr
     }
