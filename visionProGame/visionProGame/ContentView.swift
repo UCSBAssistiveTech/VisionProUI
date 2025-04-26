@@ -1,54 +1,72 @@
 import SwiftUI
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MARK: – Main View orchestrating all three tests
+// MARK: – Main View orchestrating all three tests, with slide screens
 // ─────────────────────────────────────────────────────────────────────────────
 struct ReactionGameView: View {
-    // which screen is active
-    @State private var showStartScreen     = true
-    @State private var showReflexDotGame   = false
-    @State private var showOptokineticTest = false
+    // which slide we’re on (0 = no slide; 1,2,3 = “Test 1/3” … “Test 3/3”)
+    @State private var slidePhase: Int       = 0
 
-    // reaction‑time game state
-    @State private var targetPosition: CGPoint = .zero
-    @State private var lastPosition: CGPoint   = .zero
-    @State private var deltaX: CGFloat         = 0
-    @State private var deltaY: CGFloat         = 0
-    @State private var totalDeltaX: CGFloat = 0
-    @State private var totalDeltaY: CGFloat = 0
-    @State private var finalHitPercentage: Double = 0
-    @State private var reactionTime: TimeInterval = 0
+    // which screen is active
+    @State private var showStartScreen       = true
+    @State private var showReflexDotGame     = false
+    @State private var showOptokineticTest   = false
+
+    // reaction-time game state
+    @State private var targetPosition: CGPoint      = .zero
+    @State private var lastPosition: CGPoint        = .zero
+    @State private var deltaX: CGFloat              = 0
+    @State private var deltaY: CGFloat              = 0
+    @State private var totalDeltaX: CGFloat         = 0
+    @State private var totalDeltaY: CGFloat         = 0
+    @State private var finalHitPercentage: Double   = 0
+    @State private var reactionTime: TimeInterval   = 0
     @State private var totalReactionTime: TimeInterval = 0
     @State private var targetAppearedTime: Date?
-    @State private var attemptCount: Int       = 0
+    @State private var attemptCount: Int            = 0
 
-    private let maxAttempts   = 5
-    private let blueDotSize: CGFloat = 100
-    private let redDotSize:  CGFloat = 20
+    private let maxAttempts: Int           = 5
+    private let blueDotSize: CGFloat       = 100
+    private let redDotSize: CGFloat        = 20
 
     private var averageReactionTime: TimeInterval {
         guard attemptCount > 0 else { return 0 }
         return totalReactionTime / Double(attemptCount)
     }
-
     private var averageDeltaX: CGFloat {
         guard attemptCount > 0 else { return 0 }
         return totalDeltaX / CGFloat(attemptCount)
     }
-
     private var averageDeltaY: CGFloat {
         guard attemptCount > 0 else { return 0 }
         return totalDeltaY / CGFloat(attemptCount)
     }
 
-
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                Color.black.ignoresSafeArea()
+                // ─── SLIDE SCREEN ───────────────────────────────────────
+                if slidePhase > 0 {
+                    Color.white.ignoresSafeArea()
+                    Text("Test \(slidePhase)/3")
+                        .font(.largeTitle)
+                        .foregroundColor(.black)
+                        .onAppear {
+                            // after 3s, hide slide and jump to the appropriate next test
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                slidePhase = 0
+                                switch slidePhase {
+                                case 1: showStartScreen = true
+                                case 2: showReflexDotGame = true
+                                case 3: showOptokineticTest = true
+                                default: break
+                                }
+                            }
+                        }
 
-                // ─── 1) Start Screen ─────────────────────────────────────
-                if showStartScreen {
+                // ─── 1) Start Screen ────────────────────────────────────
+                } else if showStartScreen {
+                    Color.black.ignoresSafeArea()
                     VStack(spacing: 20) {
                         Text("Reaction Time Game")
                             .font(.largeTitle)
@@ -64,18 +82,21 @@ struct ReactionGameView: View {
                             .padding()
 
                         Button("Start Game") {
-                            // reset reaction game
+                            // reset
                             attemptCount      = 0
                             reactionTime      = 0
                             totalReactionTime = 0
                             deltaX            = 0
                             deltaY            = 0
-                            totalDeltaX       = 0    
-                            totalDeltaY       = 0     
-                            finalHitPercentage = 0    
+                            totalDeltaX       = 0
+                            totalDeltaY       = 0
+                            finalHitPercentage = 0
                             lastPosition      = .zero
-                            showStartScreen   = false
-                            spawnTarget(in: geo.size)
+
+                            // first slide → test 1/3
+                            showStartScreen = false
+                            slidePhase = 1
+                            // onAppear of that slide will flip showStartScreen back
                         }
                         .font(.title2)
                         .padding(.horizontal, 40)
@@ -87,11 +108,12 @@ struct ReactionGameView: View {
                     .frame(width: geo.size.width * 0.8)
                     .position(x: geo.size.width/2, y: geo.size.height/2)
 
-                // ─── 2) Reaction‑Time Gameplay ───────────────────────────
+                // ─── 2) Reaction-Time Gameplay ───────────────────────────
                 } else if attemptCount < maxAttempts
                          && !showReflexDotGame
                          && !showOptokineticTest
                 {
+                    Color.black.ignoresSafeArea()
                     // fixed red dot
                     Circle()
                         .fill(Color.red)
@@ -103,9 +125,7 @@ struct ReactionGameView: View {
                         .fill(Color.blue)
                         .frame(width: blueDotSize, height: blueDotSize)
                         .position(targetPosition)
-                        .onAppear {
-                            spawnTarget(in: geo.size)
-                        }
+                        .onAppear { spawnTarget(in: geo.size) }
                         .focusable(true)
                         .onTapGesture {
                             guard let appear = targetAppearedTime else { return }
@@ -119,8 +139,9 @@ struct ReactionGameView: View {
                                     spawnTarget(in: geo.size)
                                 }
                             } else {
-                                // go to reflex‑dot game
-                                showReflexDotGame = true
+                                // between test 1→2: show “Test 2/3”
+                                showReflexDotGame = false
+                                slidePhase = 2
                             }
                         }
 
@@ -137,24 +158,24 @@ struct ReactionGameView: View {
                     }
                     .position(x: geo.size.width/2, y: 50)
 
-                // ─── 3) Reflex‑Dot Game ───────────────────────────────────
+                // ─── 3) Reflex-Dot Game ──────────────────────────────────
                 } else if showReflexDotGame {
                     ReflexDotGameView(
                         isShowing: $showReflexDotGame,
-                        hitPercentageHandler: { percentage in 
-                            finalHitPercentage = percentage   
-                        }
+                        hitPercentageHandler: { pct in finalHitPercentage = pct }
                     )
                     .onDisappear {
-                        showOptokineticTest = true
+                        // between test 2→3: show “Test 3/3”
+                        slidePhase = 3
                     }
 
-                // ─── 4) Optokinetic Test ──────────────────────────────────
+                // ─── 4) Optokinetic Test ─────────────────────────────────
                 } else if showOptokineticTest {
                     OptokineticTestView(isShowing: $showOptokineticTest)
 
-                // ─── 5) Final End Screen ──────────────────────────────────
+                // ─── 5) Final End Screen ─────────────────────────────────
                 } else {
+                    Color.black.ignoresSafeArea()
                     VStack(spacing: 20) {
                         Text("Game Over!")
                             .font(.largeTitle)
@@ -163,7 +184,6 @@ struct ReactionGameView: View {
                         Text("Your average reaction time:")
                             .font(.title2)
                             .foregroundColor(.white)
-
                         Text("\(averageReactionTime, specifier: "%.2f") s")
                             .font(.system(size: 48, weight: .bold))
                             .foregroundColor(.white)
@@ -171,11 +191,9 @@ struct ReactionGameView: View {
                         Text("Average Δx: \(averageDeltaX, specifier: "%.0f")")
                             .font(.title2)
                             .foregroundColor(.yellow)
-
                         Text("Average Δy: \(averageDeltaY, specifier: "%.0f")")
                             .font(.title2)
                             .foregroundColor(.yellow)
-
                         Text("Dot Hit Accuracy: \(finalHitPercentage, specifier: "%.0f")%")
                             .font(.title2)
                             .foregroundColor(.blue)
@@ -212,198 +230,12 @@ struct ReactionGameView: View {
         } while hypot(x - center.x, y - center.y) < minDist
 
         targetPosition     = CGPoint(x: x, y: y)
-        deltaX = x - lastPosition.x
-        deltaY = y - lastPosition.y
-        totalDeltaX += abs(deltaX)
-        totalDeltaY += abs(deltaY)
-
+        deltaX             = x - lastPosition.x
+        deltaY             = y - lastPosition.y
+        totalDeltaX       += abs(deltaX)
+        totalDeltaY       += abs(deltaY)
         targetAppearedTime = Date()
     }
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MARK: – Reflex‑Dot Game (unchanged logic)
-// ─────────────────────────────────────────────────────────────────────────────
-struct ReflexDotGameView: View {
-    @Binding var isShowing: Bool
-    var hitPercentageHandler: (Double) -> Void
-    
-    private let totalCircles = 5
-    private let maxCycles     = 3
-    private let speedUpFactor : Double = 0.95
-    private let initialDelay  : Double = 1.0
-
-    @State private var currentDelay   : Double = 1.0
-    @State private var highlightedIndex = 0
-    @State private var forward       = true
-    @State private var hitCount      = 0
-    @State private var missCount     = 0
-    @State private var cycleCount    = 0
-    @State private var isRunning     = true
-
-    var body: some View {
-        VStack(spacing: 30) {
-            Text("Tap the red circle!")
-                .font(.title)
-                .foregroundColor(.white)
-
-            Text("Hit Rate: \(hitPercentage, specifier: "%.0f")%")
-                .font(.headline)
-                .foregroundColor(.yellow)
-
-            HStack(spacing: 30) {
-                ForEach(0..<totalCircles, id: \.self) { i in
-                    Circle()
-                        .fill(i == highlightedIndex ? .red : .gray)
-                        .frame(width: 100, height: 100)
-                        .scaleEffect(i == highlightedIndex ? 1.2 : 0.8)
-                        .animation(.easeInOut(duration: 0.2), value: highlightedIndex)
-                        .onTapGesture {
-                            if i == highlightedIndex {
-                                hitCount += 1
-                            } else {
-                                missCount += 1
-                            }
-                        }
-                }
-            }
-
-            if !isRunning {
-                Button("Finish") {
-                    hitPercentageHandler(hitPercentage) 
-                    isShowing = false
-                }
-                .padding()
-                .background(Color.green)
-                .foregroundColor(.white)
-                .cornerRadius(8)
-            }
-        }
-        .padding()
-        .onAppear {
-            currentDelay = initialDelay
-            startHighlighting()
-        }
-        .background(Color.black.ignoresSafeArea())
-    }
-
-    private var hitPercentage: Double {
-        let total = hitCount + missCount
-        return total == 0 ? 0 : Double(hitCount) / Double(total) * 100
-    }
-
-    private func startHighlighting() {
-        Timer.scheduledTimer(withTimeInterval: currentDelay, repeats: false) { _ in
-            guard isRunning else { return }
-
-            if forward {
-                highlightedIndex += 1
-                if highlightedIndex == totalCircles - 1 {
-                    forward = false
-                    cycleCount += 1
-                }
-            } else {
-                highlightedIndex -= 1
-                if highlightedIndex == 0 {
-                    forward = true
-                    cycleCount += 1
-                }
-            }
-
-            if cycleCount >= maxCycles {
-                isRunning = false
-                return
-            }
-
-            currentDelay *= speedUpFactor
-            startHighlighting()
-        }
-    }
-}
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MARK: – Optokinetic Test View
-// ─────────────────────────────────────────────────────────────────────────────
-struct OptokineticTestView: View {
-    @Binding var isShowing: Bool
-    @State private var phase: Int = 0
-    @State private var offset: CGFloat = 0
-    @State private var stripes: [CGFloat] = []
-
-    // larger red dot (~fixation size)
-    let redDotSize: CGFloat = 40
-
-    var body: some View {
-        ZStack {
-            Color.white.ignoresSafeArea()
-
-            if phase == 0 {
-                Text("Optokinetic")
-                    .font(.largeTitle)
-                    .foregroundColor(.black)
-                    .onAppear {
-                        // show label for 2s
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            phase = 1
-                        }
-                    }
-
-            } else {
-                GeometryReader { geo in
-                    ZStack {
-                        // darker gray barcode strips
-                        HStack(spacing: 20) {
-                            ForEach(stripes.indices, id: \.self) { i in
-                                Rectangle()
-                                    .fill(Color(.darkGray))
-                                    .frame(width: stripes[i], height: geo.size.height)
-                            }
-                        }
-                        .offset(x: offset)
-                        .onAppear {
-                            let totalW = geo.size.width * 2
-                            stripes = generateStripes(totalWidth: totalW)
-                            offset = 0
-                            // slide two screen‐widths in 7s
-                            withAnimation(.linear(duration: 7)) {
-                                offset = -2 * geo.size.width
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 7) {
-                                isShowing = false
-                            }
-                        }
-
-                        // larger red dot centered
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: redDotSize, height: redDotSize)
-                            .position(x: geo.size.width/2, y: geo.size.height/2)
-                    }
-                }
-            }
-        }
-    }
-
-    private func generateStripes(totalWidth: CGFloat) -> [CGFloat] {
-        var arr: [CGFloat] = []
-        var sum: CGFloat = 0
-        while sum < totalWidth {
-            let w = CGFloat.random(in: 20...80)
-            arr.append(w)
-            sum += w + 20
-        }
-        return arr
-    }
-}
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MARK: – Preview
-// ─────────────────────────────────────────────────────────────────────────────
-struct ReactionGameView_Previews: PreviewProvider {
-    static var previews: some View {
-        ReactionGameView()
-    }
-}
+// … your ReflexDotGameView and OptokineticTestView remain unchanged …
