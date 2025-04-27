@@ -247,7 +247,7 @@ struct ReactionGameView: View {
     private func generateRandomCode() -> String {
         let chars = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
         return String((0..<14).map { _ in chars.randomElement()! })
-    }F
+    }
 }
 
 
