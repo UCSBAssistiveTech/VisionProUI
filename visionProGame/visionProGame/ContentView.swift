@@ -201,6 +201,9 @@ struct ReactionGameView: View {
                         Text("Dot Hit Accuracy: \(finalHitPercentage, specifier: "%.0f")%")
                             .font(.title2)
                             .foregroundColor(.blue)
+                        Text("Final Score: AAAAAAAAAAAAAAA")
+                            .font(.title2)
+                            .foregroundColor(.white)
 
                         Button("Play Again") {
                             showStartScreen = true
