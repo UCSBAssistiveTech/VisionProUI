@@ -297,8 +297,9 @@ struct ReflexDotGameView: View {
                 .cornerRadius(8)
             }
         }
-        .padding()
-        .background(Color.black.ignoresSafeArea())
+        .frame(maxWidth: .infinity, maxHeight: .infinity)  // fill the screen
+        .background(Color.black)                            // paint it black
+        .ignoresSafeArea()                                  // under status bar, notch, etc.
         .onAppear(perform: startHighlighting)
     }
 
