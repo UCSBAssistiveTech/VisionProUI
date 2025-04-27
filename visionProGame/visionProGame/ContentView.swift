@@ -49,7 +49,7 @@ struct ReactionGameView: View {
                 if slidePhase > 0 {
                     Color.white.ignoresSafeArea()
                     Text("Test \(slidePhase)/3")
-                        .font(.largeTitle)
+                        .font(.system(size: 64, weight: .bold))
                         .foregroundColor(.black)
                         .onAppear {
                             let current = slidePhase
@@ -353,7 +353,7 @@ struct OptokineticTestView: View {
 
             if phase == 0 {
                 Text("Optokinetic")
-                    .font(.largeTitle)
+                    .font(.system(size: 72, weight: .bold))
                     .foregroundColor(.black)
                     .onAppear {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
