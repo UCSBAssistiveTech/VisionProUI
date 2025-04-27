@@ -202,10 +202,14 @@ struct ReactionGameView: View {
                         Text("Dot Hit Accuracy: \(finalHitPercentage, specifier: "%.0f")%")
                             .font(.title2)
                             .foregroundColor(.blue)
-                        finalCode = generateRandomCode()
                         Text("Final Score: \(finalCode)")
                         .font(.title2)
                         .foregroundColor(.white)
+                        .onAppear {
+                            if finalCode.isEmpty {
+                                finalCode = generateRandomCode()
+                            }
+                        }
 
                         Button("Play Again") {
                             showStartScreen = true
