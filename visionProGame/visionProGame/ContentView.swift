@@ -24,7 +24,8 @@ struct ReactionGameView: View {
     @State private var totalReactionTime: TimeInterval = 0
     @State private var targetAppearedTime: Date?
     @State private var attemptCount        = 0
-
+    @State private var finalCode: String = ""
+    
     private let maxAttempts = 5
     private let blueDotSize: CGFloat = 100
     private let redDotSize: CGFloat  = 20
@@ -201,9 +202,9 @@ struct ReactionGameView: View {
                         Text("Dot Hit Accuracy: \(finalHitPercentage, specifier: "%.0f")%")
                             .font(.title2)
                             .foregroundColor(.blue)
-                        Text("Final Score: AAAAAAAAAAAAAAA")
-                            .font(.title2)
-                            .foregroundColor(.white)
+                        Text("Final Score: \(finalCode)")
+                        .font(.title2)
+                        .foregroundColor(.white)
 
                         Button("Play Again") {
                             showStartScreen = true
@@ -243,6 +244,10 @@ struct ReactionGameView: View {
         totalDeltaY         += abs(deltaY)
         targetAppearedTime   = Date()
     }
+    private func generateRandomCode() -> String {
+        let chars = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+        return String((0..<14).map { _ in chars.randomElement()! })
+    }F
 }
 
 
