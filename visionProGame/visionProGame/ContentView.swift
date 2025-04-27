@@ -352,38 +352,49 @@ struct OptokineticTestView: View {
             Color.white.ignoresSafeArea()
 
             if phase == 0 {
-                Text("Optokinetic")
-                    .font(.system(size: 72, weight: .bold))
-                    .foregroundColor(.black)
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            phase = 1
-                        }
+                VStack(spacing: 16) {
+                    Text("Optokinetic")
+                        .font(.system(size: 72, weight: .bold))
+                        .foregroundColor(.black)
+
+                    Text("Look at the red dot in the center")
+                        .font(.title2)
+                        .foregroundColor(.black)
+                }
+                .multilineTextAlignment(.center)
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        phase = 1
                     }
+                }
+
             } else {
                 GeometryReader { geo in
-                    HStack(spacing: 20) {
-                        ForEach(stripes.indices, id: \.self) { i in
-                            Rectangle()
-                                .fill(Color(.darkGray))
-                                .frame(width: stripes[i], height: geo.size.height)
+                    ZStack {
+                        HStack(spacing: 20) {
+                            ForEach(stripes.indices, id: \.self) { i in
+                                Rectangle()
+                                    .fill(Color(.darkGray))
+                                    .frame(width: stripes[i], height: geo.size.height)
+                            }
                         }
-                    }
-                    .offset(x: offset)
-                    .onAppear {
-                        stripes = generateStripes(totalWidth: geo.size.width * 2)
-                        withAnimation(.linear(duration: 7)) {
-                            offset = -2 * geo.size.width
+                        .offset(x: offset)
+                        .onAppear {
+                            stripes = generateStripes(totalWidth: geo.size.width * 2)
+                            offset = 0
+                            withAnimation(.linear(duration: 7)) {
+                                offset = -2 * geo.size.width
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 7) {
+                                isShowing = false
+                            }
                         }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 7) {
-                            isShowing = false
-                        }
-                    }
 
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: redDotSize, height: redDotSize)
-                        .position(x: geo.size.width/2, y: geo.size.height/2)
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: redDotSize, height: redDotSize)
+                            .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                    }
                 }
             }
         }
@@ -400,6 +411,7 @@ struct OptokineticTestView: View {
         return arr
     }
 }
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────
